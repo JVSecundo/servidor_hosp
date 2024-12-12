@@ -1,0 +1,26 @@
+# Vagrant
+.vagrant/
+*.log
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# IDEs e editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Arquivos temporários
+*.tmp
+*.temp
+*~
+
+# Logs e databases
+*.log
+*.sql
+*.sqlite
+
+# Arquivos de ambiente
+.env
