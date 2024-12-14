@@ -130,6 +130,18 @@ sudo fail2ban-client status
 ```
 sudo ufw status
 ```
+**Se o firewall estiver desativado e você quiser ativá-lo, execute**
+
+```
+sudo ufw enable
+
+```
+**Se precisar desativar, use**
+
+```
+sudo ufw disable
+
+```
 
 3. Status do AppArmor:
 ```
