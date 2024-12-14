@@ -67,8 +67,6 @@ vagrant ssh
 
 4.  Inicie o Docker Compose  
 ```
-<<<<<<< HEAD
-=======
 cd /vagrant
 sudo docker-compose up -d
 ```
@@ -116,7 +114,6 @@ sudo docker-compose logs
 
 5. O servidor web estará disponível em:
 ```
->>>>>>> ccaaa8616bca2b4816d4fd61c7eee683dbefbe1e
 http://localhost:8080
 ```
 
