@@ -1,0 +1,10 @@
+version: "3.8"
+
+services:
+  web:
+    image: httpd:2.4    # Usa a imagem oficial do Apache
+    container_name: apache_server
+    ports:
+      - "80:80"         # Expõe o contêiner na porta 80
+    volumes:
+      - ./src:/usr/local/apache2/htdocs/  # Monta o diretório da aplicação no contêiner

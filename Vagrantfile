@@ -1,7 +1,7 @@
 Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/focal64"
   
-  # Usando forwarded_port ao invés de bridge para maior compatibilidade
+  #usando forwarded_port para acessar o Apache no contêiner
   config.vm.network "forwarded_port", guest: 80, host: 8080
 
   config.vm.provider "virtualbox" do |vb|
@@ -10,27 +10,24 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.provision "shell", inline: <<-SHELL
-    # Atualização do sistema
+    #atualização do sistema
     sudo apt-get update -y
     sudo apt-get upgrade -y
 
-    # Instalação do Apache e PHP primeiro
-    sudo apt-get install -y apache2 php libapache2-mod-php
-    sudo systemctl enable apache2
-    sudo systemctl start apache2
-
-    # Instalação do Docker e Docker Compose
+    #instalação do Docker
     sudo apt-get install -y docker.io
     sudo systemctl start docker
     sudo systemctl enable docker
 
+    #instalação do Docker Compose
     sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     sudo chmod +x /usr/local/bin/docker-compose
 
-    # Copiar os arquivos da aplicação web
-    sudo cp -r /vagrant/src/* /var/www/html/
+    #Subir os contêineres com o docker-compose.yml
+    cd /vagrant
+    sudo docker-compose up -d
   SHELL
 
-  # Executar script de hardening por último
+  #executar script de hardening por último
   config.vm.provision "shell", path: "script.sh"
 end

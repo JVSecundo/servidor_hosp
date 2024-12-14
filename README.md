@@ -70,7 +70,7 @@ vagrant ssh
 
 4. O servidor web estará disponível em:
 ```
-http://localhost:80
+http://localhost:8080
 ```
 
 ## Verificação de Segurança

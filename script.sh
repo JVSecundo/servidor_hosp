@@ -1,95 +1,62 @@
-#!/bin/bash
+#atualizar pacotes
+echo "Atualizando pacotes..."
+apt-get update -y
 
-# Script de Hardening para Servidor Web
-echo "Iniciando processo de hardening do servidor..."
+# Instalar dependências necessárias para o Docker
+echo "Instalando dependências para o Docker..."
+apt-get install -y apt-transport-https ca-certificates curl software-properties-common
 
-# 1. Atualizações do sistema
-echo "Atualizando o sistema..."
-apt-get update && apt-get upgrade -y
+#adicionar chave GPG e repositório do Docker
+echo "Adicionando chave GPG e repositório do Docker..."
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 
-# 2. Instalação de ferramentas de segurança
-echo "Instalando ferramentas de segurança..."
-apt-get install -y ufw fail2ban unattended-upgrades apparmor apparmor-utils
+#instalar Docker e Docker Compose
+echo "Instalando Docker e Docker Compose..."
+apt-get update -y
+apt-get install -y docker-ce docker-ce-cli containerd.io
 
-# 3. Configurar atualizações automáticas
-echo "Configurando atualizações automáticas..."
-dpkg-reconfigure -plow unattended-upgrades
+# Baixar e instalar o Docker Compose
+echo "Baixando e instalando o Docker Compose..."
+curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep tag_name | cut -d '"' -f 4)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
 
-# 4. Configurar fail2ban para proteção contra força bruta
-echo "Configurando fail2ban..."
-cat > /etc/fail2ban/jail.local <<EOF
-[DEFAULT]
-bantime = 3600
-findtime = 600
-maxretry = 3
+#Verificar se o Docker e o Docker Compose estão instalados corretamente
+echo "Verificando Docker e Docker Compose..."
+docker --version
+docker-compose --version
 
-[sshd]
-enabled = true
-port = ssh
-filter = sshd
-logpath = /var/log/auth.log
-maxretry = 3
-EOF
+#instalar o Fail2Ban
+echo "Instalando o Fail2Ban..."
+apt-get install -y fail2ban
 
-systemctl enable fail2ban
-systemctl start fail2ban
+# Copiar o arquivo de configuração padrão do Fail2Ban
+echo "Configurando o Fail2Ban..."
+cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
 
-# 5. Configurar SSH
-echo "Configurando SSH..."
-cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
-sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
-sed -i 's/#MaxAuthTries 6/MaxAuthTries 3/' /etc/ssh/sshd_config
-# Mantendo autenticação por senha para permitir vagrant ssh
-# sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+# Configurar Fail2Ban para monitorar o SSH
+echo "[sshd]" >> /etc/fail2ban/jail.local
+echo "enabled = true" >> /etc/fail2ban/jail.local
+echo "port    = ssh" >> /etc/fail2ban/jail.local
+echo "logpath = /var/log/auth.log" >> /etc/fail2ban/jail.local
+echo "maxretry = 3" >> /etc/fail2ban/jail.local
+echo "bantime  = 600" >> /etc/fail2ban/jail.local
+echo "findtime = 600" >> /etc/fail2ban/jail.local
 
-# 6. Configurar firewall (UFW)
-echo "Configurando firewall..."
-ufw default deny incoming
-ufw default allow outgoing
-ufw allow ssh
-ufw allow 80/tcp
-ufw allow 443/tcp
-echo "y" | ufw enable
+# Reiniciar o Fail2Ban
+echo "Reiniciando o Fail2Ban..."
+systemctl restart fail2ban
 
-# 7. Desabilitar serviços não necessários
-echo "Desabilitando serviços desnecessários..."
-systemctl disable cups
-systemctl disable bluetooth
-systemctl disable avahi-daemon
+#verificar o status do Fail2Ban
+echo "Status do Fail2Ban:"
+systemctl status fail2ban
 
-# 8. Configurar AppArmor
-echo "Configurando AppArmor..."
-aa-enforce /etc/apparmor.d/*
+#constroi e iniciar os serviços do Docker Compose
+echo "Construindo e iniciando os serviços do Docker Compose..."
+docker-compose up -d
 
-# 9. Configurar políticas de senha
-echo "Configurando políticas de senha..."
-sed -i 's/PASS_MAX_DAYS\t99999/PASS_MAX_DAYS\t90/' /etc/login.defs
-sed -i 's/PASS_MIN_DAYS\t0/PASS_MIN_DAYS\t10/' /etc/login.defs
-sed -i 's/PASS_WARN_AGE\t7/PASS_WARN_AGE\t7/' /etc/login.defs
+#Verificar se os serviços Docker Compose estão em execução
+echo "Verificando status dos containers Docker..."
+docker ps
 
-# 10. Configurar limites do sistema
-echo "Configurando limites do sistema..."
-cat >> /etc/security/limits.conf <<EOF
-* soft core 0
-* hard core 0
-* soft nproc 1000
-* hard nproc 2000
-EOF
-
-# 11. Hardening do Apache
-echo "Configurando segurança do Apache..."
-cp /etc/apache2/apache2.conf /etc/apache2/apache2.conf.bak
-cat >> /etc/apache2/apache2.conf <<EOF
-ServerTokens Prod
-ServerSignature Off
-TraceEnable Off
-EOF
-
-# 12. Auditoria do sistema
-echo "Configurando auditoria do sistema..."
-apt-get install -y auditd
-systemctl enable auditd
-systemctl start auditd
-
-echo "Processo de hardening concluído!"
-echo "Por favor, verifique os logs para garantir que tudo foi aplicado corretamente."
+echo "Configuração concluída com sucesso!"
