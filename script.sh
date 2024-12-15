@@ -8,9 +8,9 @@ apt-get install -y apt-transport-https ca-certificates curl software-properties-
 apt-get install -y fail2ban
 cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
 
-cat > /etc/fail2ban/jail.local << EOL
+sudo bash -c 'cat > /etc/fail2ban/jail.local << EOL
 [DEFAULT]
-bantime = 1h
+bantime = 10m
 findtime = 10m
 maxretry = 3
 
@@ -20,8 +20,8 @@ port = ssh
 filter = sshd
 logpath = /var/log/auth.log
 maxretry = 3
-bantime = 1h
-EOL
+bantime = 10m
+EOL'
 
 systemctl enable fail2ban
 systemctl restart fail2ban
@@ -35,6 +35,7 @@ ufw allow 80/tcp
 ufw allow 443/tcp
 echo "y" | ufw enable
 ufw status
+
 
 # AppArmor
 apt-get install -y apparmor apparmor-utils

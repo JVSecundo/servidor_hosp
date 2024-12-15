@@ -51,22 +51,22 @@ A aplicação web é executada dentro de um contêiner Docker, configurado via *
 ### 5. Como Usar
 
 1. Clone o repositório:
-```
+```bash
 git clone [https://github.com/JVSecundo/servidor_hosp.git]
 cd [servidor_hosp]
 ```
 2. Inicie a máquina virtual:
-```
+```bash
 vagrant up
 ```
 
 3. Acesse a máquina virtual:
-```
+```bash
 vagrant ssh
 ```
 
 4.  Inicie o Docker Compose  
-```
+```bash
 cd /vagrant
 sudo docker-compose up -d
 ```
@@ -76,7 +76,7 @@ sudo docker-compose up -d
 
 Usar wget com Tolerância a Falhas, o **wget** é mais robusto para redes instáveis.
 
-```
+```bash
 sudo apt-get install -y wget
 
 sudo wget --tries=20 --continue -O /usr/local/bin/docker-compose "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)"
@@ -85,35 +85,35 @@ sudo wget --tries=20 --continue -O /usr/local/bin/docker-compose "https://github
 
 **Tornar o arquivo executável**
 
-```
+```bash
 sudo chmod +x /usr/local/bin/docker-compose
 
 ```
 
 **Verifique a versão instalada**
 
-```
+```bash
 docker-compose --version
 
 ```
 
 **Executar o Compose: Executar o projeto com**
 
-```
+```bash
 sudo docker-compose up -d
 
 ```
 
 **Visualizar os logs de um serviço gerenciado pelo Docker Compose**
 
-```
+```bash
 sudo docker-compose logs
 
 ```
 
 
 5. O servidor web estará disponível em:
-```
+```bash
 http://localhost:8080
 ```
 
@@ -122,7 +122,7 @@ http://localhost:8080
 Após a execução do script de hardening, você pode verificar o status dos serviços de segurança usando os seguintes comandos:
 
 ### 1. Verificar Status do Fail2Ban
-```
+```bash
 # Ver status geral do Fail2Ban
 sudo fail2ban-client status
 
@@ -131,7 +131,7 @@ sudo fail2ban-client status sshd
 ```
 
 ### 2. Verificar Status do Firewall (UFW)
-```
+```bash
 # Ver status e regras ativas
 sudo ufw status verbose
 
@@ -140,13 +140,13 @@ sudo ufw status numbered
 ```
 
 ### 3. Verificar Status do AppArmor
-```
+```bash
 # Ver status do AppArmor
 sudo aa-status
 ```
 
 ### 4. Verificar Status do Auditd
-```
+```bash
 # Ver regras de auditoria ativas
 sudo auditctl -l
 
@@ -155,7 +155,7 @@ sudo aureport --summary
 ```
 
 ### 5. Verificar Todos os Serviços Ativos
-```
+```bash
 # Listar serviços ativos
 systemctl list-units --type=service --state=active
 ```
@@ -164,7 +164,7 @@ systemctl list-units --type=service --state=active
 
 Para facilitar a coleta de evidências durante a apresentação, use o script automatizado:
 
-```
+```bash
 sudo collect-evidence
 ```
 
@@ -177,7 +177,7 @@ Este comando irá:
 
 Após executar o script de coleta, você pode verificar as evidências:
 
-```
+```bash
 # Ver o arquivo de evidências gerado
 ls -l /var/log/security_evidence/evidence.tar.gz
 
@@ -190,30 +190,105 @@ cat apparmor.log
 cat audit.log
 ```
 
+# Servidor Web Seguro
+
+[...conteúdo anterior até a seção de Testando as Medidas de Segurança...]
+
 ## Testando as Medidas de Segurança
 
-Para demonstrar que as medidas de segurança estão funcionando:
-
-1. Teste do Fail2Ban:
+### Preparação para os Testes
+1. Primeiro, acesse sua máquina virtual Vagrant:
+```bash
+vagrant ssh
 ```
-# Tente fazer login SSH com senha errada várias vezes
-# Depois verifique se o IP foi banido:
+
+### Testes de Segurança
+
+#### 1. Teste do Fail2Ban
+Para simular tentativas de login SSH incorretas:
+```bash
+# Em um novo terminal, tente logar com usuário inválido
+# Use o IP da sua máquina virtual (geralmente 127.0.0.1 porta 2222 para Vagrant)
+ssh usuario_invalido@127.0.0.1 -p 2222
+```
+Repita algumas vezes com senhas incorretas.
+
+Para verificar se o Fail2Ban bloqueou o IP:
+```bash
 sudo fail2ban-client status sshd
 ```
+Você deverá ver "Currently banned IPs: 1" e seu IP na lista.
 
-2. Teste do Firewall:
-```
-# Tente acessar uma porta não permitida
-# Verifique os logs:
-sudo tail -f /var/log/ufw.log
+#### 2. Teste do Firewall (UFW)
+```bash
+# Verificar status do UFW
+sudo ufw status
+
+# Em outro terminal, teste uma porta bloqueada
+# No Windows/PowerShell:
+Test-NetConnection -ComputerName localhost -Port 8080
+
+# Ver logs em tempo real:
+sudo tail -f /var/log/kern.log | grep UFW
+
+# Ou verificar todos os logs do UFW:
+sudo grep UFW /var/log/kern.log
 ```
 
-3. Teste do Auditd:
-```
-# Faça alguma alteração em arquivo monitorado
+#### 3. Teste do Auditd
+```bash
+# Fazer alteração em arquivo monitorado:
 sudo touch /etc/passwd
-# Verifique os logs:
-sudo ausearch -f /etc/passwd
+
+# Verificar os logs:
+sudo ausearch -f /etc/passwd -ts recent
+```
+
+### Verificação de Serviços e Configurações
+```bash
+# Verificar status dos serviços
+sudo systemctl status fail2ban
+sudo systemctl status ufw
+sudo systemctl status auditd
+
+# Verificar configurações
+sudo cat /etc/fail2ban/jail.local    # Configuração do Fail2Ban
+sudo ufw show raw                    # Regras do UFW
+sudo auditctl -l                     # Regras do Auditd
+```
+
+### Resolvendo Bloqueio do Fail2Ban
+
+Se você foi bloqueado pelo Fail2Ban durante os testes, siga estes passos:
+
+1. Acesse a VM pelo VirtualBox:
+   - Abra o VirtualBox
+   - Localize sua VM (nome como "servidor_hosp_default_...")
+   - Clique em "Mostrar"
+   - Login: vagrant
+   - Senha: vagrant
+
+2. Desbloqueie seu IP:
+```bash
+# Ver IPs banidos
+sudo fail2ban-client status sshd
+
+# Desbanir um IP específico
+sudo fail2ban-client set sshd unbanip SEU_IP
+
+# Ou desbanir todos os IPs
+sudo fail2ban-client unban --all
+```
+
+3. Para evitar bloqueios durante testes:
+```bash
+# Editar configuração do Fail2Ban
+sudo nano /etc/fail2ban/jail.local
+
+# Altere maxretry = 3 para maxretry = 10
+
+# Reinicie o Fail2Ban
+sudo systemctl restart fail2ban
 ```
 
 ### Apresentação do Projeto
@@ -230,6 +305,16 @@ sudo ausearch -f /etc/passwd
 ![Comando: docker-compose --version ](assets/docker2.png)
 
 ![Comando: sudo docker-compose logs ](assets/logs1.png)
+
+3. **IMG Verificando de Segurança**
+
+![](assets/verif-1.png)
+![](assets/verif-2.png)
+![](assets/verif-3.png)
+![](assets/verif-4.png)
+![](assets/verif-5.png)
+![](assets/verif-6.png)
+![](assets/verif-7.png)
 
 **Logs Docker**
 
