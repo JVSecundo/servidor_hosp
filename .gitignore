@@ -2,25 +2,54 @@
 .vagrant/
 *.log
 
-# Sistema operacional
+# SSH Keys
+*.pem
+id_rsa
+id_rsa.pub
+id_dsa
+id_dsa.pub
+id_ecdsa
+id_ecdsa.pub
+id_ed25519
+id_ed25519.pub
+*.key
+*.pub
+*_rsa
+*_dsa
+*_ecdsa
+*_ed25519
+
+# Sistema
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# IDEs e editores
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Arquivos temporários
-*.tmp
-*.temp
-*~
-
-# Logs e databases
+# Logs e arquivos temporários
 *.log
-*.sql
-*.sqlite
+*.tmp
+tmp/
+temp/
 
 # Arquivos de ambiente
 .env
+*.env
+.env.*
+
+# Diretório de evidências de segurança
+security_evidence/
+evidence.tar.gz
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Outros
+*.swp
+*.swo
+*~
