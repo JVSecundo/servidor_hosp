@@ -1,62 +1,111 @@
-#atualizar pacotes
-echo "Atualizando pacotes..."
-apt-get update -y
+#!/bin/bash
 
-# Instalar dependências necessárias para o Docker
-echo "Instalando dependências para o Docker..."
+# Atualização do sistema
+apt-get update -y && apt-get upgrade -y
 apt-get install -y apt-transport-https ca-certificates curl software-properties-common
 
-#adicionar chave GPG e repositório do Docker
-echo "Adicionando chave GPG e repositório do Docker..."
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-
-#instalar Docker e Docker Compose
-echo "Instalando Docker e Docker Compose..."
-apt-get update -y
-apt-get install -y docker-ce docker-ce-cli containerd.io
-
-# Baixar e instalar o Docker Compose
-echo "Baixando e instalando o Docker Compose..."
-curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep tag_name | cut -d '"' -f 4)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
-
-#Verificar se o Docker e o Docker Compose estão instalados corretamente
-echo "Verificando Docker e Docker Compose..."
-docker --version
-docker-compose --version
-
-#instalar o Fail2Ban
-echo "Instalando o Fail2Ban..."
+# Fail2Ban
 apt-get install -y fail2ban
-
-# Copiar o arquivo de configuração padrão do Fail2Ban
-echo "Configurando o Fail2Ban..."
 cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
 
-# Configurar Fail2Ban para monitorar o SSH
-echo "[sshd]" >> /etc/fail2ban/jail.local
-echo "enabled = true" >> /etc/fail2ban/jail.local
-echo "port    = ssh" >> /etc/fail2ban/jail.local
-echo "logpath = /var/log/auth.log" >> /etc/fail2ban/jail.local
-echo "maxretry = 3" >> /etc/fail2ban/jail.local
-echo "bantime  = 600" >> /etc/fail2ban/jail.local
-echo "findtime = 600" >> /etc/fail2ban/jail.local
+cat > /etc/fail2ban/jail.local << EOL
+[DEFAULT]
+bantime = 1h
+findtime = 10m
+maxretry = 3
 
-# Reiniciar o Fail2Ban
-echo "Reiniciando o Fail2Ban..."
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 3
+bantime = 1h
+EOL
+
+systemctl enable fail2ban
 systemctl restart fail2ban
 
-#verificar o status do Fail2Ban
-echo "Status do Fail2Ban:"
-systemctl status fail2ban
+# UFW
+apt-get install -y ufw
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow ssh
+ufw allow 80/tcp
+ufw allow 443/tcp
+echo "y" | ufw enable
+ufw status
 
-#constroi e iniciar os serviços do Docker Compose
-echo "Construindo e iniciando os serviços do Docker Compose..."
-docker-compose up -d
+# AppArmor
+apt-get install -y apparmor apparmor-utils
+systemctl enable apparmor
+systemctl start apparmor
 
-#Verificar se os serviços Docker Compose estão em execução
-echo "Verificando status dos containers Docker..."
-docker ps
+# Auditd
+apt-get install -y auditd audispd-plugins
 
-echo "Configuração concluída com sucesso!"
+cat > /etc/audit/rules.d/audit.rules << EOL
+-w /etc/passwd -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/sudoers -p wa -k identity
+-w /var/log/auth.log -p wa -k sudo_log
+-w /var/log/sudo.log -p wa -k sudo_log
+-w /etc/systemd/ -p wa -k systemd
+-w /etc/init.d/ -p wa -k init
+-w /etc/security/ -p wa -k security
+EOL
+
+systemctl enable auditd
+systemctl restart auditd
+
+# Script de coleta de evidências
+cat > /usr/local/bin/collect-evidence << 'EOL'
+#!/bin/bash
+
+EVIDENCE_DIR="/var/log/security_evidence"
+mkdir -p $EVIDENCE_DIR
+cd $EVIDENCE_DIR
+
+echo "=== Fail2Ban Status ===" > fail2ban.log
+fail2ban-client status >> fail2ban.log
+
+echo "=== UFW Status ===" > ufw.log
+ufw status verbose >> ufw.log
+
+echo "=== AppArmor Status ===" > apparmor.log
+aa-status >> apparmor.log
+
+echo "=== Audit Status ===" > audit.log
+auditctl -l >> audit.log
+aureport --summary >> audit.log
+
+tar -czf evidence.tar.gz *.log
+echo "Evidências coletadas em $EVIDENCE_DIR/evidence.tar.gz"
+EOL
+
+chmod +x /usr/local/bin/collect-evidence
+
+# Docker
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+apt-get update
+apt-get install -y docker-ce docker-ce-cli containerd.io
+
+# Docker Compose
+curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+
+# Ativar serviços
+systemctl enable docker
+systemctl start docker
+
+# Verificar instalações
+docker --version
+docker-compose --version
+fail2ban-client status
+ufw status
+aa-status
+systemctl status auditd
+
+echo "Script de hardening concluído com sucesso!"

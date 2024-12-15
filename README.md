@@ -61,7 +61,7 @@ vagrant up
 ```
 
 3. Acesse a máquina virtual:
-```bash
+```
 vagrant ssh
 ```
 
@@ -119,47 +119,102 @@ http://localhost:8080
 
 ## Verificação de Segurança
 
-Para verificar se as medidas de segurança estão funcionando:
+Após a execução do script de hardening, você pode verificar o status dos serviços de segurança usando os seguintes comandos:
 
-1. Status do Fail2ban:
+### 1. Verificar Status do Fail2Ban
 ```
+# Ver status geral do Fail2Ban
 sudo fail2ban-client status
+
+# Ver status específico da jail SSH
+sudo fail2ban-client status sshd
 ```
 
-2. Status do Firewall:
+### 2. Verificar Status do Firewall (UFW)
 ```
-sudo ufw status
-```
-**Se o firewall estiver desativado e você quiser ativá-lo, execute**
+# Ver status e regras ativas
+sudo ufw status verbose
 
-```
-sudo ufw enable
-
-```
-**Se precisar desativar, use**
-
-```
-sudo ufw disable
-
+# Ver regras numeradas (útil para gerenciamento)
+sudo ufw status numbered
 ```
 
-3. Status do AppArmor:
+### 3. Verificar Status do AppArmor
 ```
-sudo apparmor_status
+# Ver status do AppArmor
+sudo aa-status
 ```
 
-4. Verificar serviços ativos:
+### 4. Verificar Status do Auditd
 ```
+# Ver regras de auditoria ativas
+sudo auditctl -l
+
+# Ver resumo dos eventos de auditoria
+sudo aureport --summary
+```
+
+### 5. Verificar Todos os Serviços Ativos
+```
+# Listar serviços ativos
 systemctl list-units --type=service --state=active
 ```
-## Evidências de Hardening
 
-Durante a demonstração, serão apresentados os seguintes logs de segurança:
+## Coletando Evidências de Hardening
 
-**Logs de tentativas de acesso bloqueadas pelo Fail2Ban.**
-**Status do AppArmor.**
-**Status do UFW.**
-**Logs do auditd.**
+Para facilitar a coleta de evidências durante a apresentação, use o script automatizado:
+
+```
+sudo collect-evidence
+```
+
+Este comando irá:
+1. Criar um diretório `/var/log/security_evidence`
+2. Coletar status de todos os serviços de segurança
+3. Gerar um arquivo compactado com todas as evidências
+
+### Verificando as Evidências Coletadas
+
+Após executar o script de coleta, você pode verificar as evidências:
+
+```
+# Ver o arquivo de evidências gerado
+ls -l /var/log/security_evidence/evidence.tar.gz
+
+# Extrair e ver o conteúdo
+cd /var/log/security_evidence
+tar -xzf evidence.tar.gz
+cat fail2ban.log
+cat ufw.log
+cat apparmor.log
+cat audit.log
+```
+
+## Testando as Medidas de Segurança
+
+Para demonstrar que as medidas de segurança estão funcionando:
+
+1. Teste do Fail2Ban:
+```
+# Tente fazer login SSH com senha errada várias vezes
+# Depois verifique se o IP foi banido:
+sudo fail2ban-client status sshd
+```
+
+2. Teste do Firewall:
+```
+# Tente acessar uma porta não permitida
+# Verifique os logs:
+sudo tail -f /var/log/ufw.log
+```
+
+3. Teste do Auditd:
+```
+# Faça alguma alteração em arquivo monitorado
+sudo touch /etc/passwd
+# Verifique os logs:
+sudo ausearch -f /etc/passwd
+```
 
 ### Apresentação do Projeto
 
@@ -175,6 +230,7 @@ Durante a demonstração, serão apresentados os seguintes logs de segurança:
 ![Comando: docker-compose --version ](assets/docker2.png)
 
 ![Comando: sudo docker-compose logs ](assets/logs1.png)
+
 **Logs Docker**
 
 3. **IMG a Aplicação Web**
