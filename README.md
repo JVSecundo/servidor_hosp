@@ -305,6 +305,7 @@ sudo systemctl restart fail2ban
 ![Comando: docker-compose --version ](assets/docker2.png)
 
 ![Comando: sudo docker-compose logs ](assets/logs1.png)
+**Logs Docker**
 
 3. **IMG Verificando de Segurança**
 
@@ -316,13 +317,12 @@ sudo systemctl restart fail2ban
 ![](assets/verif-6.png)
 ![](assets/verif-7.png)
 
-**Logs Docker**
 
-3. **IMG a Aplicação Web**
+4. **IMG a Aplicação Web**
 
 ![Aplicação WEB](assets/web.png)
 
-4. **IMG Logs de Segurança**
+
 
    
 ## Autores
